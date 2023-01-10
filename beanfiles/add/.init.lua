@@ -28,42 +28,42 @@ function OnHttpRequest()
     -- No reason to allow clients to hold on to any connections
     SetHeader('Connection', 'close')
 
-	-- GetRemoveAddr() uses the last IP in a multi-address X-Forwarded-For list,
-	-- so for the purpose of getting the client IP we need to retrieve and
-	-- parse it manually
-	local forwarded = GetHeader('X-Forwarded-For')
-	local ip_int
+    -- GetRemoveAddr() uses the last IP in a multi-address X-Forwarded-For list,
+    -- so for the purpose of getting the client IP we need to retrieve and
+    -- parse it manually
+    local forwarded = GetHeader('X-Forwarded-For')
+    local ip_int
 
-	if forwarded then
-		local first_ip = string.match(forwarded, '(.-),')
-		if first_ip then ip_int = ParseIp(first_ip) end
-	end
+    if forwarded then
+        local first_ip = string.match(forwarded, '(.-),')
+        if first_ip then ip_int = ParseIp(first_ip) end
+    end
 
-	if not ip_int then ip_int = GetRemoteAddr() end
+    if not ip_int then ip_int = GetRemoteAddr() end
 
-	local tokens = AcquireToken(ip_int)
+    local tokens = AcquireToken(ip_int)
 
-	-- Below 16 tokens start returning 429 errors
-	if tokens < 16 then
-		Log(kLogWarn, 'ip %s has %d tokens' % { FormatIp(ip_int), tokens })
+    -- Below 16 tokens start returning 429 errors
+    if tokens < 16 then
+        Log(kLogWarn, 'ip %s has %d tokens' % { FormatIp(ip_int), tokens })
 
-		-- Below 8 tokens just kill the connection
-		if tokens < 8 then return end
+        -- Below 8 tokens just kill the connection
+        if tokens < 8 then return end
 
-		ServeError(429)
-		return
-	end
+        ServeError(429)
+        return
+    end
 
     -- We only handle GET requests
-	-- [*] Supporting HEAD might make us a better HTTPizen
+    -- [*] Supporting HEAD might make us a better HTTPizen
     if GetMethod() ~= 'GET' then
         ServeError(405)
         return
     end
 
-	local path = GetPath()
+    local path = GetPath()
 
-	if path == '/' then
+    if path == '/' then
         local method
 
         -- Content negotiation, very fancy!
@@ -81,11 +81,11 @@ function OnHttpRequest()
         if not method then method = 'html' end
 
         _G['handle_' .. method](FormatIp(ip_int))
-	elseif path == '/favicon.ico' then
+    elseif path == '/favicon.ico' then
         -- In the HTML output the shortcut icon is set to a blank `data:` URI,
         -- but if an agent _really_ wants that sweet favicon then go ahead and
         -- serve it up
-		ServeAsset('favicon.ico')
+        ServeAsset('favicon.ico')
     elseif string.sub(path, 1, 1) == '/' then
         -- Get the part after the '/'
         local path_after_slash = string.sub(path, 2)
@@ -114,9 +114,9 @@ end
 function handle_html(ip)
     SetHeader('Content-Type', 'text/html; charset=UTF-8')
 
-	Write('<!doctype html>\n<title>Get Your Public IP, Now With Less Bogons!</title><link rel="icon" href="data:,">\n')
-	Write('<style>html{height:100%;background-color:#27303d;color:#fff;box-sizing:border-box;border:1em solid #1b1e20;font-weight:bold;font-size:clamp(40px,7vw,128px);font-family:monospace;text-align:center;display:flex;align-items:center;justify-content:center}</style>\n')
-	Write('<!-- Don\'t parse! See: /{txt,{json,env,lua}{,?k=foo}} -->\n')
+    Write('<!doctype html>\n<title>Get Your Public IP, Now With Less Bogons!</title><link rel="icon" href="data:,">\n')
+    Write('<style>html{height:100%;background-color:#27303d;color:#fff;box-sizing:border-box;border:1em solid #1b1e20;font-weight:bold;font-size:clamp(40px,7vw,128px);font-family:monospace;text-align:center;display:flex;align-items:center;justify-content:center}</style>\n')
+    Write('<!-- Don\'t parse! See: /{txt,{json,env,lua}{,?k=foo}} -->\n')
     Write('<body>' .. ip)
 end
 
