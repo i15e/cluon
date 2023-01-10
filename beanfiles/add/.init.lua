@@ -28,7 +28,19 @@ function OnHttpRequest()
     -- No reason to allow clients to hold on to any connections
     SetHeader('Connection', 'close')
 
-    local ip_int = GetRemoteAddr()
+	-- GetRemoveAddr() uses the last IP in a multi-address X-Forwarded-For list,
+	-- so for the purpose of getting the client IP we need to retrieve and
+	-- parse it manually
+	local forwarded = GetHeader('X-Forwarded-For')
+	local ip_int
+
+	if forwarded then
+		local first_ip = string.match(forwarded, '(.-),')
+		if first_ip then ip_int = ParseIp(first_ip) end
+	end
+
+	if not ip_int then ip_int = GetRemoteAddr() end
+
 	local tokens = AcquireToken(ip_int)
 
 	-- Below 16 tokens start returning 429 errors
@@ -43,6 +55,7 @@ function OnHttpRequest()
 	end
 
     -- We only handle GET requests
+	-- [*] Supporting HEAD might make us a better HTTPizen
     if GetMethod() ~= 'GET' then
         ServeError(405)
         return
@@ -157,7 +170,9 @@ function agent_to_method(user_agent)
     end
 end
 
-function common_handle_var(default_k, finish)
+-- Common function used by handlers that use the 'k' GET param for outputting
+-- a custom key name in a variable-name-like context
+function common_handle_var(default_k, finish_callback)
     SetHeader('Content-Type', 'text/plain')
 
     local k
@@ -168,7 +183,7 @@ function common_handle_var(default_k, finish)
 
     if not k then k = default_k end
 
-    finish(k)
+    finish_callback(k)
 end
 
 function sanitize_var_name(var)
