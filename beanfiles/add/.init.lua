@@ -1,13 +1,3 @@
-function OnServerStart()
-    -- Replenish 1 token per second,
-    -- count per /23 (two /24's),
-    -- disable the automatic reject/ignore/ban since we handle it manually
-    ProgramTokenBucket(1, 23, -1, -1, -1)
-
-    -- Even 256 processes sounds like quite a bit for our plucky little service!
-    assert(unix.setrlimit(unix.RLIMIT_NPROC, 256, 256))
-end
-
 -- Map for MIME content negotiation on '/'
 mime_method_map = {
     ['text/html'] = 'html',
@@ -24,26 +14,33 @@ text_agents = {
     'curl', 'wget'
 }
 
+function OnServerStart()
+    -- Replenish 1 token per second,
+    -- count per /23 (two /24's),
+    -- disable the automatic reject/ignore/ban since we handle it manually
+    ProgramTokenBucket(1, 23, -1, -1, -1)
+
+    -- Even 256 processes sounds like quite a bit for our plucky little service
+    assert(unix.setrlimit(unix.RLIMIT_NPROC, 256, 256))
+end
+
 function OnHttpRequest()
     -- No reason to allow clients to hold on to any connections
     SetHeader('Connection', 'close')
 
     local ip_int = GetRemoteAddr()
+	local tokens = AcquireToken(ip_int)
 
-    if not IsTrustedIp(ip_int) then
-        local tokens = AcquireToken(ip_int)
+	-- Below 16 tokens start returning 429 errors
+	if tokens < 16 then
+		Log(kLogWarn, 'ip %s has %d tokens' % { FormatIp(ip_int), tokens })
 
-        -- Below 16 tokens start returning 429 errors
-        if tokens < 16 then
-            Log(kLogWarn, 'ip %s has %d tokens' % { FormatIp(ip_int), tokens })
+		-- Below 8 tokens just kill the connection
+		if tokens < 8 then return end
 
-            -- Below 8 tokens just kill the connection
-            if tokens < 8 then return end
-
-            ServeError(429)
-            return
-        end
-    end
+		ServeError(429)
+		return
+	end
 
     -- We only handle GET requests
     if GetMethod() ~= 'GET' then
@@ -82,9 +79,9 @@ function OnHttpRequest()
         -- Append it to the 'handle_' prefix for the callback functions below
         local path_method = 'handle_' .. path_after_slash
 
-        -- Verify the method string is sane firsut
+        -- Verify the method string is sane first
         if not string.match(path_method, '^%l[%l%d_]+$') then
-            Log(kLogWarn, 'path tomfoolery: %s' % { path_method })
+            Log(kLogWarn, 'path tomfoolery: ' .. path_method)
             -- Thought about 402, but I guess we should be professional here
             ServeError(400)
             return
@@ -105,7 +102,7 @@ function handle_html(ip)
     SetHeader('Content-Type', 'text/html; charset=UTF-8')
 
 	Write('<!doctype html>\n<title>Get Your Public IP, Now With Less Bogons!</title><link rel="icon" href="data:,">\n')
-	Write('<style>html{height:100%;background-color:#27303d;color:#fff;box-sizing:border-box;border:1em solid #1b1e20;font-weight:bold;font-size:4em;font-family:monospace;text-align:center;display:flex;align-items:center;justify-content:center}</style>\n')
+	Write('<style>html{height:100%;background-color:#27303d;color:#fff;box-sizing:border-box;border:1em solid #1b1e20;font-weight:bold;font-size:clamp(40px,7vw,128px);font-family:monospace;text-align:center;display:flex;align-items:center;justify-content:center}</style>\n')
 	Write('<!-- Don\'t parse! See: /{txt,{json,env,lua}{,?k=foo}} -->\n')
     Write('<body>' .. ip)
 end
