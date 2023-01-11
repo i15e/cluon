@@ -114,6 +114,9 @@ end
 function handle_html(ip)
     SetHeader('Content-Type', 'text/html; charset=UTF-8')
 
+	-- Yes this is valid HTML that passes validation! HTML5 is actually quite
+	-- loose with which opening and closing tags it requires to be present in
+	-- a document
     Write('<!doctype html>\n<html lang="en"><title>Get Your Public IP, Now With Less Bogons!</title><link rel="icon" href="data:,">\n')
     Write('<style>html{height:100%;background-color:#27303d;color:#fff;box-sizing:border-box;border:1em solid #1b1e20;font-weight:bold;font-size:clamp(40px,7vw,128px);font-family:monospace;text-align:center;display:flex;align-items:center;justify-content:center}</style>\n')
     Write('<!-- Don\'t parse! See: /{txt,{json,env,lua}{,?k=foo}} -->\n')
