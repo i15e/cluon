@@ -16,8 +16,8 @@ fast public-IP web service that I wanted to have online.
 
 Have Docker installed and `make run`.
 
-| URL Component | Explanation |
-| ------------- | ----------- |
+| Endpoint Component | Explanation |
+| ------------------ | ----------- |
 | `/` | First content negotiates based on the agent's `Accept` header. If no matching content type is found (e.g., if it's set to `*/*`), then CLI agent strings are searched for - if one is found the output will be set to the plain-text (`/txt`) mode. |
 | `/html`, `/json`, `/txt`, `/lua`, `/env` | The five output content modes. |
 | `?k=[key name]` | Add the `k` `GET` argument to change the default `ip`/`IP` key in the `json`, `lua`, and `env` output types to the one specified. |
