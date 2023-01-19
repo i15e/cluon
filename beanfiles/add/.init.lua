@@ -94,9 +94,7 @@ function OnHttpRequest()
 
         -- Verify the method string is sane first
         if not string.match(path_method, '^%l[%l%d_]+$') then
-            Log(kLogWarn, 'path tomfoolery: ' .. path_method)
-            -- Thought about 402, but I guess we should be professional here
-            ServeError(400)
+            ServeError(404)
             return
         end
 
